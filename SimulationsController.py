@@ -234,10 +234,18 @@ class SimulationsController:
 
                     simOutput = 'Sim ' + ' '*(6-(len(str(index+1)))) + str(index+1) + ' / ' + str(self.nSimulations) + ' '*(6-len(str(self.nSimulations))) + '  ||  '
                     lapOutput = 'Lap ' + ' '*(6-(len(str(lap+1)))) + str(lap+1) + ' / ' + str(sim.nAverage) + ' '*(6-len(str(sim.nAverage))) + '  ||  '
-                    currentExperimentOutput = '[' + tickString + '-'
+                    currentExperimentOutput = '['
+
+                    maxStringLength = 117
+                    appendix = ''
                     if stopSimulation:
-                        currentExperimentOutput += 'Stopped.'
-                    currentExperimentOutput += '-' * (101 - len(currentExperimentOutput)) + ']' + '  ||  '
+                        maxStringLength -= 9 
+                        appendix = '-Stopped.'
+                    if len(tickString) > maxStringLength:
+                        currentExperimentOutput += '...' + tickString[-maxStringLength:] + appendix
+                    else:
+                        currentExperimentOutput += tickString + appendix
+                    currentExperimentOutput += '-' * (maxStringLength + 4 - len(currentExperimentOutput)) + ']' + '  ||  '
                     avgOutput = 'Avg: ' + str(round(tempCurrentAverage,3))
 
                     end = '\r'
