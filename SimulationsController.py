@@ -5,55 +5,124 @@ import numpy as np
 import os
 from qutip import *
 import matplotlib.pyplot as plt
+from copy import deepcopy as dc
 
 class SimulationsController:
     """ Highest level class of the simulation. Objects of this
     class control the simulations, i.e. it starts and terminates them
     and saves the results. It also controls the terminal output during
     the simulation. """
-    def __init__(self, filePath = None, description = None):
-        self.simulations = []
-        self.nSimulations = 0
-        self.filePath = filePath
 
+    # private functions
+    # ________________
+
+    def __init__(self, filePath = None, description = None):
+        # private attributes
+        # __________________
+        self.__simulations = []
+        self.__nSimulations = 0
+        self.__filePath = filePath
         # if no filepath is given, set it to results + current time
         # on the desktop
-        if self.filePath is None:
-            self.filePath = os.path.join(os.path.expanduser('~'), 'simulation_results')
-            if not os.path.exists(self.filePath):
-                os.makedirs(self.filePath)
+        if self.__filePath is None:
+            self.__filePath = os.path.join(os.path.expanduser('~'), 'simulation_results')
+            if not os.path.exists(self.__filePath):
+                os.makedirs(self.__filePath)
         else:
             if not os.path.exists(filePath):
                 print ('Created path ' + filePath + '.')
                 os.makedirs(filePath)
-                self.filePath = filePath
-
+                self.__filePath = filePath
         from datetime import datetime
         now = datetime.now()
         nowString = "%d_%d_%d_%d_%d_%d" % (now.day, now.month, now.year,
                 now.hour, now.minute, now.second)
         filename = 'results_' + nowString + '.csv'
 
-        self.filename = filename
+        self.__filename = filename
 
-        self.description = description
+        self.__description = description
         if description is None:
-            self.description = 'Controller created %d.%d.%d - %d:%d:%d.' % (now.day, now.month, now.year,
+            self.__description = 'Controller created %d.%d.%d - %d:%d:%d.' % (now.day, now.month, now.year,
                     now.hour, now.minute, now.second)
 
-        self.results = None
+        self.__results = None
+
+    def __save(self, sim, alternateTicks):
+        pathToFile = os.path.join(self.__filePath, self.__filename)
+        avgAlternateTicks = np.mean(alternateTicks)
+        stdAlternateTicks = np.std(alternateTicks)
+        if not os.path.isfile(pathToFile):
+            data = pd.DataFrame(columns = [
+                'n_average',
+                'dimension',
+                'summary',
+                'list_alternate_ticks',
+                'average_alternate_ticks'
+                'std_alternate_ticks',
+                'label',
+                'description'
+                ])
+        else:
+            data = pd.read_csv(pathToFile)
+
+        ind = len(data)
+
+        # encode the states and hamiltonians as a string
+        summary = sim.summary()
+
+        appendix = 1
+        while sim.label in data['label']:
+            newLabel = sim.label + str(appendix)
+            print ('Simulation with label ' + sim.label + ' already exists. Changed label to ' + \
+                    newlabel + '.')
+            sim.label = newLabel
+
+        newData = pd.DataFrame({
+            'n_average':[sim.nAverage],
+            'dimension':[sim.getDimension()],
+            'summary':[summary],
+            'list_alternate_ticks':[alternateTicks],
+            'average_alternate_ticks':[avgAlternateTicks],
+            'std_alternate_ticks':[stdAlternateTicks],
+            'label':[sim.label],
+            'description':[self.__description]
+            }, index = [ind])
+        data = pd.concat([data, newData])
+        data.to_csv(pathToFile, index = False, index_label = False)
+        print('Saved simulation to ' + pathToFile  + '.', end = '\n')
+        stdout.flush()
+
+    # public functions
+    # _______________
 
     def clear(self, filePath = None, description = None):
-        self.__init__(filePath = self.filePath, description = description)
+        self.__init__(filePath = self.__filePath, description = description)
 
-    def info(self):
-        print (self.description)
+    def info(self, sim = None):
+        if sim is None:
+            return (self.__description)
+        simSummary = '' 
+        if type(sim) is int:
+            try:
+                simSummary = self.__results['summary'][sim-1]
+            except:
+                print ('Simulation number does not exist.')
+                print
+                return
+        elif type(sim) is str:
+            simSummary = self.__resulte['summary'][self.__results['label'] == simLabel]
+        else:
+            print ('Unsupported type for simulation. Please provide the number or the label of the simulation.')
+            print
+            return
+        return self._description + '\n\n' + simSummary
 
     def readResults(self, filename = None):
         if filename is None:
             # if no filename is specified, return the newest simulation
             # (1) get all files
-            listOfFiles = [f for f in os.listdir(self.filePath) if os.path.isfile(os.path.join(self.filePath,f))]
+            listOfFiles = [f for f in os.listdir(self.__filePath) if os.path.isfile(os.path.join(self.__filePath,f))]
             # (2) filter for csv files
             listOfFiles = [f for f in listOfFiles if f.endswith('.csv')]
             if len(listOfFiles) == 0:
@@ -61,8 +130,8 @@ class SimulationsController:
                 return
             # (3) get the newest one
             listOfFiles.sort(key = lambda x: os.path.getmtime(
-                os.path.join(self.filePath, x)))
-            filename = os.path.join(self.filePath,listOfFiles[-1])
+                os.path.join(self.__filePath, x)))
+            filename = os.path.join(self.__filePath,listOfFiles[-1])
         else:
             if type(filename) is not str:
                 print ('Can\'t read simulation results. Filename must be string.')
@@ -74,42 +143,38 @@ class SimulationsController:
                 if not filename.endswith('.csv'):
                     print ('Cant\'t read simulation results. Specified file name has to be of type .csv')
                     return
-
-        self.results = pd.read_csv(filename)
+        self.__results = pd.read_csv(filename)
+        # some of the older simulations don't have  description yet, so there needs to be a workaround
+        # for loading the description
         try:
-            self.description = self.results['description'][0]
+            self.__description = self.__results['description'][0]
         except:
             return
 
-    def plotAveragesVsDimensions(self, errorbar = False, stdOfMean = False, xmin = None, xmax = None, ymin = None, ymax = None):
-        if self.results is None:
+    def plotAveragesVsDimensions(self, errorbar = False, stdOfMean = False, xmin = None, xmax = None, ymin = None, ymax = None, title = None):
+        if self.__results is None:
             print ('No results loaded yet. Read the latest simulation results with SimulationsController.readResults().')
             return
-
         plt.figure()
-
-        title = 'Alternate Ticks'
-        nAverage = self.results['n_average'][0]
-        if not all(navg == self.results['n_average'][0] for navg in self.results['n_average']):
+        autoTitle = 'Alternate Ticks'
+        nAverage = self.__results['n_average'][0]
+        if not all(navg == self.__results['n_average'][0] for navg in self.__results['n_average']):
             print ('Warning: Alternate ticks have been averaged over different number of iterations ' + \
                     'for different dimensions...')
         else:
-            title += ' averaged over %d iterations.' % nAverage 
-
+            autoTitle += ' averaged over %d iterations.' % nAverage 
         if errorbar:
             if stdOfMean:
-                plt.errorbar(self.results['dimension'], self.results['average_alternate_ticks'],
-                    yerr = self.results['std_alternate_ticks']/np.sqrt(nAverage), ls = '-', c = 'b')
-                title += ' (error bar from std of mean)'
+                plt.errorbar(self.__results['dimension'], self.__results['average_alternate_ticks'],
+                    yerr = self.__results['std_alternate_ticks']/np.sqrt(nAverage), ls = '-', c = 'b')
+                autoTitle += ' (error bar from std of mean)'
             else:
-                plt.errorbar(self.results['dimension'], self.results['average_alternate_ticks'],
-                    yerr = self.results['std_alternate_ticks'], ls = '-', c = 'b')
-                title += ' (error bar from std)'
-
+                plt.errorbar(self.__results['dimension'], self.__results['average_alternate_ticks'],
+                    yerr = self.__results['std_alternate_ticks'], ls = '-', c = 'b')
+                autoTitle += ' (error bar from std)'
         else:
-            plt.plot(self.results['dimension'], self.results['average_alternate_ticks'],
+            plt.plot(self.__results['dimension'], self.__results['average_alternate_ticks'],
                     ls = '-', c = 'b')
-
         plt.xlabel('Dimension')
         plt.ylabel('# Alternate Ticks')
         if xmin is not None:
@@ -120,55 +185,66 @@ class SimulationsController:
             plt.ylim(ymin = ymin)
         if ymax is not None:
             plt.ylim(ymax = ymax)
-        plt.title(title)
+        if title is None:
+            plt.title(autoTitle)
+        else:
+            plt.title(title)
         plt.show()
 
-    def plotHistogram(self, sim):
-        if self.results is None:
+    def plotHistogram(self, sim, title = None):
+        if self.__results is None:
             print ('No results loaded yet. Read the latest simulation results with SimulationController.readResults().')
             return
-
         # read the list of alternate ticks
         alternateTicksAsString = None
-        title = 'Histogram of # alternate ticks for Simulation '
+        autoTitle = 'Histogram of # alternate ticks for Simulation '
         if type(sim) is int:
             try:
-                alternateTicksAsString = self.results['list_alternate_ticks'][sim-1]
-                title += str(sim) + ' with dimension ' + str(self.results['dimension'][sim-1]) + '.'
+                alternateTicksAsString = self.__results['list_alternate_ticks'][sim-1]
+                autoTitle += str(sim) + ' with dimension ' + str(self.__results['dimension'][sim-1]) + '.'
             except:
                 print ('Simulation number does not exist.')
                 return
         elif type(sim) is str:
-            alternateTicksAsString = self.results['list_alternate_ticks'][self.results['label'] == simLabel]
-            title += simLabel + ' with dimension ' + str(self.results['dimension'][self.results['label'] == simLabel]) + '.'
+            alternateTicksAsString = self.__results['list_alternate_ticks'][self.__results['label'] == sim]
+            autoTitle += simLabel + ' with dimension ' + str(self.__results['dimension'][self.__results['label'] == sim]) + '.'
         else:
             print ('Unsupported type for simulation. Please provide the number or the label of the simulation.')
             return
-
         alternateTicks = map(int, alternateTicksAsString[1:-1].split(','))
         histo, bins = np.histogram(alternateTicks, bins = range(max(alternateTicks) + 2))
         plt.bar(bins[:-1], histo, width = 1, color = 'b')
         plt.xlabel('# Alternate Ticks')
         plt.ylabel('Appearances')
-        plt.title(title)
+        if title is None:
+            plt.title(autoTitle)
+        else:
+            plt.title(title)
         plt.show()
 
         plt.figure()
 
-
     def add(self, simulation):
-        self.simulations.append(simulation)
-        self.nSimulations += 1
+        self.__simulations.append(simulation)
+        self.__nSimulations += 1
+
+    def remove(self, index = -1):
+        if self.__nSimulations == 0:
+            print ('No simulations added. Nothing to remove.')
+            return
+        self.__simulations.pop(index % self.__nSimulations)
+        self.__nSimulation -= 1
 
     def performSimulations(self):
         from sys import stdout
 
-        for index in range(self.nSimulations):
-            sim = self.simulations[index]
-
+        for index in range(self.__nSimulations):
+            sim = self.__simulations[index]
             # check if it is a valid simulation
-            if not sim.ready:
-                print('Simulation %d/%d is not valid. Skipping...' % (index+1, self.nSimulations))
+
+            sim.initialize()
+            if not sim.isReady():
+                print('Simulation %d/%d is not valid. Skipping...' % (index+1, self.__nSimulations))
                 stdout.flush()
                 continue
 
@@ -177,62 +253,56 @@ class SimulationsController:
             for lap in range(sim.nAverage):
                 # bool variable to indicate if a simulation needs to be stopped
                 stopSimulation = False
-
-                # tickString will look like 0101010... and indicates which clocks have ticked
+                # tickArray will look like 0101010... and indicates which clocks have ticked
+                tickArray = [] 
                 tickString = ''
-
                 while True:
-
                     tickingClocks = sim.run()
-
                     # if several clocks have ticked at exactly the same time (very unlikely)
                     # the simulation should stop (not alternate)
                     if len(tickingClocks) > 1 or len(tickingClocks) == 0:
                         stopSimulation = True
                     else:
-
                         # now, we know that only one clock has ticked...
                         tickingClock = tickingClocks[0]
-
                         # check if it is in alternate order...
                         # note that the code allows for two modes:
                         # 1) strictly alternate: clocks have to tick in a predefined order
                         # 2) less strictly alternate: all clocks need to tick before the first one ticks a second time
-
                         if sim.mode == 'normal':
-                            relevant = len(tickString) % sim.nClocks
+                            relevant = len(tickArray) % sim.getNClocks()
                             if relevant == 0:
+                                tickArray.append(tickingClock)
                                 tickString += str(tickingClock)
                             else:
-                                if not tickingClock in map(int, list(tickString[-relevant:])):
+                                if not tickingClock in tickArray[-relevant:]:
+                                    tickArray.append(tickingClock)
                                     tickString += str(tickingClock)
                                 else:
                                     stopSimulation = True
-
                         elif sim.mode == 'strict' and sim.order is None:
-                            if not tickingClock in map(int, list(tickString)):
+                            if not tickingClock in tickArray:
+                                tickArray.append(tickingClock)
                                 tickString += str(tickingClock)
                             else:
                                 stopSimulation = True
-                            if len(tickString) == sim.nClocks:
-                                sim.order = map(int, list(tickString)) 
-
+                            if len(tickArray) == sim.getNClocks():
+                                sim.order = dc(tickArray) 
                         else: # this means mode == 'strict'
-                            if len(tickString) == 0:
+                            if len(tickArray) == 0:
                                 requiredClock = sim.order[0]
                             else:
-                                requiredClock = sim.order[(sim.order.index(int(tickString[-1])) + 1) % sim.nClocks]
-
+                                requiredClock = sim.order[(sim.order.index(tickArray[-1]) + 1) % sim.getNClocks()]
                             if requiredClock == tickingClock:
+                                tickArray.append(tickingClock)
                                 tickString += str(tickingClock)
                             else:
                                 stopSimulation = True
-
-                    nAlternateTicks = len(tickString)
+                    nAlternateTicks = len(tickArray)
                     tempCurrentAverage = currentAverage * lap / float(lap + 1) + nAlternateTicks / float(lap + 1)
 
-
-                    simOutput = 'Sim ' + ' '*(6-(len(str(index+1)))) + str(index+1) + ' / ' + str(self.nSimulations) + ' '*(6-len(str(self.nSimulations))) + '  ||  '
+                    # create console output
+                    simOutput = 'Sim ' + ' '*(6-(len(str(index+1)))) + str(index+1) + ' / ' + str(self.__nSimulations) + ' '*(6-len(str(self.__nSimulations))) + '  ||  '
                     lapOutput = 'Lap ' + ' '*(6-(len(str(lap+1)))) + str(lap+1) + ' / ' + str(sim.nAverage) + ' '*(6-len(str(sim.nAverage))) + '  ||  '
                     currentExperimentOutput = '['
 
@@ -241,7 +311,7 @@ class SimulationsController:
                     if stopSimulation:
                         maxStringLength -= 9 
                         appendix = '-Stopped.'
-                    if len(tickString) > maxStringLength:
+                    if nAlternateTicks > maxStringLength:
                         currentExperimentOutput += '...' + tickString[-maxStringLength:] + appendix
                     else:
                         currentExperimentOutput += tickString + appendix
@@ -259,63 +329,10 @@ class SimulationsController:
                     if stopSimulation:
                         currentAverage = tempCurrentAverage
                         alternateTicks.append(nAlternateTicks)
-                        sim.reset()
+                        sim.initialize()
                         break
 
-            self.save(sim, alternateTicks)
+            self.__save(sim, alternateTicks)
 
-    def save(self, sim, alternateTicks):
-        pathToFile = os.path.join(self.filePath, self.filename)
-        avgAlternateTicks = np.mean(alternateTicks)
-        stdAlternateTicks = np.std(alternateTicks)
-        if not os.path.isfile(pathToFile):
-            data = pd.DataFrame(columns = [
-                'n_average',
-                'dimension',
-                'clock_states',
-                'reset_states',
-                'hamiltonian',
-                'tickProjection',
-                'notickProjection',
-                'list_alternate_ticks',
-                'average_alternate_ticks'
-                'std_alternate_ticks',
-                'label',
-                'description'
-                ])
-        else:
-            data = pd.read_csv(pathToFile)
-
-        ind = len(data)
-
-        # encode the states and hamiltonians as a string
-        statesString = str([str(Qobj(sim.clockKets[i])) for i in range(sim.nClocks)])
-        hamiltonianString = str(Qobj(sim.hamiltonian))
-        tickProjectionString = str(Qobj(sim.tickProjector))
-        noTickProjectionString = str(Qobj(sim.noTickProjector))
-
-        appendix = 1
-        while sim.label in data['label']:
-            newLabel = sim.label + str(appendix)
-            print ('Simulation with label ' + sim.label + ' already exists. Changed label to ' + \
-                    newlabel + '.')
-            sim.label = newLabel
-
-        newData = pd.DataFrame({
-            'n_average':[sim.nAverage],
-            'dimension':[sim.dimension],
-            'clock_states':[str(statesString)],
-            'reset_states':[sim.resetState],
-            'hamiltonian':[hamiltonianString],
-            'tickProjection':[tickProjectionString],
-            'notickProjection':[noTickProjectionString],
-            'list_alternate_ticks':[alternateTicks],
-            'average_alternate_ticks':[avgAlternateTicks],
-            'std_alternate_ticks':[stdAlternateTicks],
-            'label':[sim.label],
-            'description':[self.description]
-            }, index = [ind])
-        data = pd.concat([data, newData])
-        data.to_csv(pathToFile, index = False, index_label = False)
-        print('Saved simulation to ' + pathToFile  + '.', end = '\n')
-        stdout.flush()
+    def getNSimulations(self):
+        return self.__nSimulations
