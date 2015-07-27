@@ -8,10 +8,41 @@ import matplotlib.pyplot as plt
 from copy import deepcopy as dc
 
 class SimulationsController:
-    """ Highest level class of the simulation. Objects of this
-    class control the simulations, i.e. it starts and terminates them
-    and saves the results. It also controls the terminal output during
-    the simulation. """
+    """ SimulationsController class
+        ___________________________
+
+        Is used to perform many consecutive simulations (usually with different dimensions)
+        and to analyze the results.
+
+
+        Functions
+        _________
+       
+        clear() : clears the simulation controller (all previously added simulations are deleted)
+
+        info(sim) : returns information about the SimulationsController, this information is usually
+                    manually added to it by instantiating it with a description, sim can be specified
+                    to get additional information about a specific simulation
+
+        readResults(filename) : loads the simulation results from a .csv file
+
+        plotAveragesVsDimensions(errorbar, stdOfMean, xmin, xmax, ymin, ymax, title) : Plots the standard
+                    plot of the number of alternate ticks vs. the dimension of the system. All arguments
+                    are optional. Errorbar = True shows the standard deviation as error bars, stdOfMean = True
+                    changes this to the standard deviation of the Mean.
+                    title specifies the title of the plot.
+
+        plotHistogram(sim, title) : Plots a histogram of alternate ticks for a specific simulation.
+
+        add(simulation) : adds a simulation to the SimulationController
+
+        remove(index) : removes simulation index
+
+        performSimulations() : performs all simulations that have been added to it
+
+        getNSimulations() : returns the number of simulations added to the controller
+
+"""
 
     # private functions
     # ________________

@@ -9,6 +9,78 @@ import scipy.stats as stats
 
 
 class Simulation:
+    """ The Simulation Class
+        ____________________
+
+
+        Accessible Attributes:
+        _____________________
+
+        nAverage (int): # of times the simulation is to get the average number of alternate ticks
+
+        mode (string): Either 'strict' or 'normal', default: 'strict' for 2 clocks, 'normal' for more than 2 clocks 
+
+        order (list) : If is chosen to be strict, a predfined order can be defined, in which the clocks have to tick. If not specified, order is assigned automatically
+
+        label (string) : An identification label for easy-access when studying the simulation results. If not specified, label is assigned automatically.
+
+
+        Functions
+        _________
+
+        setTau(tau) : change the value of tau used in the Hamiltonian (and recalculates the Hamiltonian if necessary)
+
+        getTau(tau) : returns the value of tau used in the Hamiltonian
+
+        setVeryEfficient() : enables very efficient computation (only possible in special cases) 
+
+        unsetVeryEfficient() : disables very efficient computation
+
+        setResetState(resetState) : defines the state a clock is reset to after ticking, resetState is the index of the clock (add order)
+
+        getDimension() : returns the dimension of the current system (None if not specified yet)
+
+        getNClocks() : returns the number of clocks in the simulation
+
+        isReady() : checks if the simulation is ready to be run (not that it can only be ready after running initialize() )
+
+        createUniformSuperpositionState(dim, left, right) : creates a uniform superposition state of dimension dim starting at left and ending at right
+
+        createGaussianSuperpositionState(dim, cent, width) : creates a Gaussian superposition state of dimension dim centered around cent with width (3sigma) width
+
+        createNaiveHamiltonian(dim, corners) : creates a naive hamiltonian of dimension dim, corners = True means that the corners of the Hamiltonian are set to 1
+
+        createPeresHamiltonian(dim, tP) : creates a Peres Hamiltonian of dimension dim with Fourier parameters tP
+
+        createStandardProjectors(dim, delta, d0, clock, loc) : creates the projectors as defined in the Rankovic paper. Clock is optional and can be used to assign
+                                                               a projector to a specific clock, loc specifies at which state the support starts (going backwards),
+                                                               e.g. loc = dim - 1 means that the states dim - d0 to dim - 1 have support
+
+        addHamiltonian(hamiltonian) : adds a Hamiltonian to the system (not required if one of the standard Hamiltonians is created with one of the functions above)
+
+        addProjectors(tick, noTick, clock) : adds projectors for tick and no tick to the system (not required if ")
+
+        addClockState(clockState) : adds a Clock State to the system (not required if one of the standard states is created with one of the functions above) 
+
+        removeClockState(ind) : removes clock ind
+
+        clear() : resets the simulation to an empty system with default values
+
+        entangle() : entangles the system, note that after entangling the system once, changing a state or Hamiltonian will immediately lead to recalculation
+                     of the entanglement parameters
+
+        unentanlge() : unentangles the system
+
+        summary() : returns a summary of the system
+
+        preview() : can be used to animate one of the clocks (without measurement) in the Hamiltonian
+
+        initialize() : checks if everything is OK and sets the simulation to ready (is usually called by the SimulationsController)
+
+        run() : runs the simulation until a tick occurs
+
+"""        
+
     # private functions
     # _________________
 
