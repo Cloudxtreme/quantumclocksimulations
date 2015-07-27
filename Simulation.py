@@ -9,7 +9,7 @@ import scipy.stats as stats
 
 
 class Simulation:
-    def __init__(self, tau = 1., nAverage = 100, mode = 'strict', order = None, label = None):
+    def __init__(self, tau = 1., nAverage = 100, mode = None, order = None, label = None):
         self.tau = tau
 
         self.initialClockStates = []
@@ -563,6 +563,12 @@ class Simulation:
 
         if self.label is None:
             self.label = 'dim' + str(self.dimension)
+
+        if self.mode is None:
+            if self.nClocks == 2:
+                self.mode = 'strict'
+            else:
+                self.mode = 'normal'
 
         self.ready = True
 
