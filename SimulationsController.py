@@ -129,7 +129,7 @@ class SimulationsController:
     # public functions
     # _______________
 
-    def setDescription(description):
+    def setDescription(self, description):
         self.__description = description
 
     def clear(self, filePath = None, description = None):
