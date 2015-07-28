@@ -605,11 +605,11 @@ class Simulation:
             if not self.__checkDimensionConsistency(np.zeros(dim)):
                 return
         if loc is None:
-            loc = dim
+            loc = dim-1
         loc = loc % dim
         tick = np.zeros((dim, dim), dtype = np.complex_)
         noTick = np.eye(dim, dtype = np.complex_)
-        for i in range(1, d0+1):
+        for i in range(d0):
             tick[loc-i,loc-i] = np.sqrt(delta)
             noTick[loc-i,loc-i] = np.sqrt(1. - delta)
         self.addProjectors(tick, noTick, clock = clock)
