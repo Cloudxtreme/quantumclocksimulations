@@ -138,16 +138,27 @@ class SimulationsController:
             try:
                 simSummary = self.__results['summary'][sim-1]
             except:
-                print ('Simulation number does not exist.')
-                print
-                return
+                try:
+                    simSummary = self.__simulations[sim-1].summary()
+                except:
+                    print ('Simulation number does not exist.')
+                    print
+                    return self.__description
         elif type(sim) is str:
-            simSummary = self.__resulte['summary'][self.__results['label'] == simLabel]
+            try:
+                simSummary = self.__resulte['summary'][self.__results['label'] == simLabel]
+            except:
+                for simulation in self.__simulations:
+                    if simulation.label == sim:
+                        simSummary = simulation.summary()
+                        break
+                else:
+                    print ('Simulation label does not exist.')
         else:
             print ('Unsupported type for simulation. Please provide the number or the label of the simulation.')
             print
-            return
-        return self._description + '\n\n' + simSummary
+            return self.__description
+        return self.__description + '\n\n' + simSummary
 
     def readResults(self, filename = None):
         if filename is None:
