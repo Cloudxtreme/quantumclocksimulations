@@ -42,6 +42,8 @@ class SimulationsController:
 
         getNSimulations() : returns the number of simulations added to the controller
 
+        setDescription(description) : sets the description
+
 """
 
     # private functions
@@ -126,6 +128,9 @@ class SimulationsController:
 
     # public functions
     # _______________
+
+    def setDescription(description):
+        self.__description = description
 
     def clear(self, filePath = None, description = None):
         self.__init__(filePath = self.__filePath, description = description)
