@@ -572,7 +572,7 @@ class Simulation:
             state[pos] = 1.
         if phaseShift:
             for i in range(right+1-left):
-                state[left+i] *= exp(-1.j * i * np.pi/4.)
+                state[left+i] *= np.exp(-1.j * i * np.pi/4.)
         state = state / np.linalg.norm(state)
         self.addClockState(state)
 
@@ -595,7 +595,7 @@ class Simulation:
             state[rightPos] = stats.norm(0,1).pdf(i * 3. / width)
         if phaseShift:
             for i in range(2*width + 1):
-                state[cent-width+i] *= exp(-1.j * i * np.pi/4.)
+                state[cent-width+i] *= np.exp(-1.j * i * np.pi/4.)
         state = (1. / np.linalg.norm(state)) * state
         self.addClockState(state)
 
