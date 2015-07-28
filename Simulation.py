@@ -44,9 +44,9 @@ class Simulation:
 
         isReady() : checks if the simulation is ready to be run (not that it can only be ready after running initialize() )
 
-        createUniformSuperpositionState(dim, left, right) : creates a uniform superposition state of dimension dim starting at left and ending at right
+        createUniformSuperpositionState(dim, left, right, phaseShift) : creates a uniform superposition state of dimension dim starting at left and ending at right
 
-        createGaussianSuperpositionState(dim, cent, width) : creates a Gaussian superposition state of dimension dim centered around cent with width (3sigma) width
+        createGaussianSuperpositionState(dim, cent, width, phaseShift) : creates a Gaussian superposition state of dimension dim centered around cent with width (3sigma) width
 
         createNaiveHamiltonian(dim, corners) : creates a naive hamiltonian of dimension dim, corners = True means that the corners of the Hamiltonian are set to 1
 
@@ -556,7 +556,7 @@ class Simulation:
             h[dim-1,0] = 1.
         self.addHamiltonian(h)
 
-    def createUniformSuperpositionState(self, dim = None, left = 0, right = 0):
+    def createUniformSuperpositionState(self, dim = None, left = 0, right = 0, phaseShift = False):
         if dim is None:
             if self.__dimension is None:
                 print 'Warning: The simulation is still dimensionless. If you want to create a predefined ' + \
@@ -570,10 +570,13 @@ class Simulation:
         state = np.zeros(dim, dtype = np.complex_)
         for pos in range(left, right+1):
             state[pos] = 1.
+        if phaseShift:
+            for i in range(right+1-left):
+                state[left+i] *= exp(-1.j * i * np.pi/4.)
         state = state / np.linalg.norm(state)
         self.addClockState(state)
 
-    def createGaussianSuperpositionState(self, dim = None, cent = 0, width = 1):
+    def createGaussianSuperpositionState(self, dim = None, cent = 0, width = 1, phaseShift = False):
         if dim is None:
             if self.__dimension is None:
                 print 'Warning: The simulation is still dimensionless. If you want to create a predefined ' + \
@@ -590,6 +593,9 @@ class Simulation:
             rightPos = (cent + i) % dim
             state[leftPos] = stats.norm(0,1).pdf(i * 3. / width)
             state[rightPos] = stats.norm(0,1).pdf(i * 3. / width)
+        if phaseShift:
+            for i in range(2*width + 1):
+                state[cent-width+i] *= exp(-1.j * i * np.pi/4.)
         state = (1. / np.linalg.norm(state)) * state
         self.addClockState(state)
 
