@@ -87,7 +87,8 @@ class SimulationsController:
         lapOutput = 'Lap ' + ' '*(6-(len(str(lap+1)))) + str(lap+1) + ' / ' + str(sim.nAverage) + ' '*(6-len(str(sim.nAverage))) + '  ||  '
         currentExperimentOutput = '['
 
-        maxStringLength = 117
+        outputStringLength = 120
+        maxStringLength = outputStringLength - 3 
         appendix = ''
         if stopSimulation:
             maxStringLength -= 9 
@@ -96,7 +97,7 @@ class SimulationsController:
             currentExperimentOutput += '...' + tickString[-maxStringLength:] + appendix
         else:
             currentExperimentOutput += tickString + appendix
-        currentExperimentOutput += '-' * (maxStringLength + 4 - len(currentExperimentOutput)) + ']' + '  ||  '
+        currentExperimentOutput += '-' * (outputStringLength - len(currentExperimentOutput)) + ']' + '  ||  '
         avgOutput = 'Avg: ' + str(round(tempCurrentAverage,3))
 
         end = '\r'
