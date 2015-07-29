@@ -556,7 +556,7 @@ class Simulation:
             h[dim-1,0] = 1.
         self.addHamiltonian(h)
 
-    def createUniformSuperpositionState(self, dim = None, left = 0, right = 0, phaseShift = False):
+    def createUniformSuperpositionState(self, dim = None, left = 0, right = 0, phaseFactor = None):
         if dim is None:
             if self.__dimension is None:
                 print 'Warning: The simulation is still dimensionless. If you want to create a predefined ' + \
@@ -570,13 +570,13 @@ class Simulation:
         state = np.zeros(dim, dtype = np.complex_)
         for pos in range(left, right+1):
             state[pos] = 1.
-        if phaseShift:
+        if phaseFactor is not None:
             for i in range(right+1-left):
-                state[left+i] *= np.exp(-1.j * i * np.pi/4.)
+                state[left+i] *= phaseFactor ** i 
         state = state / np.linalg.norm(state)
         self.addClockState(state)
 
-    def createGaussianSuperpositionState(self, dim = None, cent = 0, width = 1, phaseShift = False):
+    def createGaussianSuperpositionState(self, dim = None, cent = 0, width = 1, phaseFactor = None):
         if dim is None:
             if self.__dimension is None:
                 print 'Warning: The simulation is still dimensionless. If you want to create a predefined ' + \
@@ -593,9 +593,9 @@ class Simulation:
             rightPos = (cent + i) % dim
             state[leftPos] = stats.norm(0,1).pdf(i * 3. / width)
             state[rightPos] = stats.norm(0,1).pdf(i * 3. / width)
-        if phaseShift:
+        if phaseFactor is not None:
             for i in range(2*width + 1):
-                state[(cent-width+i) % dim] *= np.exp(-1.j * i * np.pi/4.)
+                state[(cent-width+i) % dim] *= phaseFactor**i 
         state = (1. / np.linalg.norm(state)) * state
         self.addClockState(state)
 

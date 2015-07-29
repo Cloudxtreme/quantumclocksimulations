@@ -81,6 +81,31 @@ class SimulationsController:
 
         self.__results = None
 
+    def __printConsoleOutput(self, sim, index, lap, tickString, nAlternateTicks, tempCurrentAverage, stopSimulation):
+        # create console output
+        simOutput = 'Sim ' + ' '*(6-(len(str(index+1)))) + str(index+1) + ' / ' + str(self.__nSimulations) + ' '*(6-len(str(self.__nSimulations))) + '  ||  '
+        lapOutput = 'Lap ' + ' '*(6-(len(str(lap+1)))) + str(lap+1) + ' / ' + str(sim.nAverage) + ' '*(6-len(str(sim.nAverage))) + '  ||  '
+        currentExperimentOutput = '['
+
+        maxStringLength = 117
+        appendix = ''
+        if stopSimulation:
+            maxStringLength -= 9 
+            appendix = '-Stopped.'
+        if len(tickString) > maxStringLength:
+            currentExperimentOutput += '...' + tickString[-maxStringLength:] + appendix
+        else:
+            currentExperimentOutput += tickString + appendix
+        currentExperimentOutput += '-' * (maxStringLength + 4 - len(currentExperimentOutput)) + ']' + '  ||  '
+        avgOutput = 'Avg: ' + str(round(tempCurrentAverage,3))
+
+        end = '\r'
+        if stopSimulation and lap == sim.nAverage-1:
+            end = '\n'
+
+        print(simOutput + lapOutput + currentExperimentOutput + avgOutput, end = end)
+        stdout.flush()
+
     def __save(self, sim, alternateTicks):
         pathToFile = os.path.join(self.__filePath, self.__filename)
         avgAlternateTicks = np.mean(alternateTicks)
@@ -285,6 +310,7 @@ class SimulationsController:
     def performSimulations(self):
         from sys import stdout
 
+        # initialize the simulations
         for index in range(self.__nSimulations):
             sim = self.__simulations[index]
             # check if it is a valid simulation
@@ -293,7 +319,11 @@ class SimulationsController:
             if not sim.isReady():
                 print('Simulation %d/%d is not valid. Skipping...' % (index+1, self.__nSimulations))
                 stdout.flush()
-                continue
+                self.remove(index)
+
+        # run the simulations
+        for index in range(self.__nSimulations):
+            sim = self.__simulations[index]
 
             alternateTicks = []
             currentAverage = 0.
@@ -348,30 +378,7 @@ class SimulationsController:
                     nAlternateTicks = len(tickArray)
                     tempCurrentAverage = currentAverage * lap / float(lap + 1) + nAlternateTicks / float(lap + 1)
 
-                    # create console output
-                    simOutput = 'Sim ' + ' '*(6-(len(str(index+1)))) + str(index+1) + ' / ' + str(self.__nSimulations) + ' '*(6-len(str(self.__nSimulations))) + '  ||  '
-                    lapOutput = 'Lap ' + ' '*(6-(len(str(lap+1)))) + str(lap+1) + ' / ' + str(sim.nAverage) + ' '*(6-len(str(sim.nAverage))) + '  ||  '
-                    currentExperimentOutput = '['
-
-                    maxStringLength = 117
-                    appendix = ''
-                    if stopSimulation:
-                        maxStringLength -= 9 
-                        appendix = '-Stopped.'
-                    if nAlternateTicks > maxStringLength:
-                        currentExperimentOutput += '...' + tickString[-maxStringLength:] + appendix
-                    else:
-                        currentExperimentOutput += tickString + appendix
-                    currentExperimentOutput += '-' * (maxStringLength + 4 - len(currentExperimentOutput)) + ']' + '  ||  '
-                    avgOutput = 'Avg: ' + str(round(tempCurrentAverage,3))
-
-                    end = '\r'
-                    if stopSimulation and lap == sim.nAverage-1:
-                        end = '\n'
-
-                    print(simOutput + lapOutput + currentExperimentOutput + avgOutput, end = end)
-                    stdout.flush()
-
+                    self.__printConsoleOutput(sim, index, lap, tickString, nAlternateTicks, tempCurrentAverage, stopSimulation)
                     # check if simulation needs to be stopped
                     if stopSimulation:
                         currentAverage = tempCurrentAverage
