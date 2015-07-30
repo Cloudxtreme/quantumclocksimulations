@@ -84,7 +84,7 @@ class Simulation:
     # private functions
     # _________________
 
-    def __init__(self, tau = 1., nAverage = 100, mode = None, order = None, label = None):
+    def __init__(self, tau = 1., nAverage = 100, nTicksBeforeSentToReferee = 1, mode = None, order = None, label = None):
         # private attributes
         # __________________
         # almost everything the simulation does is done internally
@@ -142,19 +142,32 @@ class Simulation:
         # exception: tau, since changing tau requires an additional action which is:
         # recalculating the hamiltonian
         # tau is therefore changed with setTau()
+
+        self.nTicksBeforeSentToReferee = nTicksBeforeSentToReferee
         self.label = label
         self.nAverage = nAverage
         self.mode = mode
         self.order = order
 
+        self.__nTicks = []
+
     def __checkForEfficiency(self, tick):
+        # if the projectors are already a vector, they represent a diagonal matrix and
+        # we already know it's efficient
+        dim = max(tick.shape)
+        if not tick.shape == (dim, dim):
+            self.__efficient = True
+            return True # the return value indicates if the objects are already vectors
+
         # if the projectors are diagonal matrices, we can calculate everything significantly
         # more efficiently.
         diagMat = np.diag(np.diag(tick))
         if np.array_equal(tick, diagMat):
             self.__efficient = True
+            return False
         else:
             self.__efficient = False
+            return False
 
     def __checkHamiltonian(self, hamiltonian):
         # Does the Hamiltonian have a supported format?
@@ -218,14 +231,24 @@ class Simulation:
         try:
             unity = tickAsMat.dot(tickAsMat) + noTickAsMat.dot(noTickAsMat)
             try:
-                np.testing.assert_array_almost_equal(unity, np.eye(max(tickAsMat.shape), dtype = np.complex))
+                np.testing.assert_array_almost_equal(unity, np.eye(max(tickAsMat.shape), dtype = np.complex_))
             except:
                 print 'Warning: The two projectors do not add up to unity which makes them invalid ' + \
-                            'for the use as a POVM. Cowardly refused to perfrom action.'
+                        'for the use as a POVM. Cowardly refused to perfrom action.'
                 return False, None, None
         except:
-            print 'Warning: Dimension mismatch for projectors. Cowardly refused to perform action.'
-            return False, None, None
+            # it could still be the case that the projectors were given as vectors
+            try:
+                unity = tick**2 + noTick**2 
+                try:
+                    np.testing.assert_array_almost_equal(unity, np.ones(max(tick.shape), dtype = np.complex_))
+                except:
+                    print 'Warning: The two projectors do not add up to unity which makes them invalid ' + \
+                            'for the use as a POVM. Cowardly refused to perform action.'  
+                    return False, None, None
+            except:
+                print 'Warning: Dimension mismatch for projectors. Cowardly refused to perform action.'
+                return False, None, None
 
         return True, tick, noTick
 
@@ -280,6 +303,12 @@ class Simulation:
             entangledKet += referenceKet[i] * prod
         self.__entangledClockKet = entangledKet
         print 'Entangled clock states.'
+
+    def testEvolve(self):
+        self.__evolve()
+
+    def testMeasure(self):
+        self.__measure()
 
     def __getEntangledProjectors(self):
         if self.__projectorMode == 'equal':
@@ -340,9 +369,17 @@ class Simulation:
                 self.__entangledClockState = self.__entangledClockState.dot(self.__entangledUnitaryDagger)
         else:
             for i in range(self.__nClocks):
-                self.__clockStates[i] = self.__unitary.dot(self.__clockStates[i])
-                if not self.__veryEfficient:
-                    self.__clockStates[i] = self.__clockStates[i].dot(self.__unitaryDagger)
+                if self.__veryEfficient:
+                    # this is only possible for Peres Hamiltonians with tP = 1
+                    # therefore, we don't need that matrix multiplication at all
+                    # and can just move the individual states in the superposition
+                    temp = self.__clockStates[i][0]
+                    self.__clockStates[i][0] = self.__clockStates[i][self.__dimension-1]
+                    for j in range(self.__dimension-2,0,-1):
+                        self.__clockStates[i][j+1] = self.__clockStates[i][j]
+                    self.__clockStates[i][1] = temp
+                else:
+                    self.__clockStates[i] = self.__unitary.dot(self.__clockStates[i]).dot(self.__unitaryDagger)
 
     def __measure(self):
         res = []
@@ -399,17 +436,22 @@ class Simulation:
             # simulate a measurement by drawing a random number
             # if the random number is smaller than the probability: tick
             rand = np.random.uniform()
+            resetClock = False
             if rand <= prob:
-                res.append(i)
+                self.__nTicks[i] += 1
+                if self.__nTicks[i] == self.nTicksBeforeSentToReferee:
+                    resetClock = True
+                    self.__nTicks[i] = 0
+                    res.append(i)
                 # reset the state (if that's an option)
                 if self.__entangled:
-                    if self.__resetState is not None:
+                    if self.__resetState is not None and resetClock:
                         # this really does not make any sense and should never occur
                         proj = self.__initialEntangledState
                     else:
                         proj = (1. / prob) * proj
                 else:
-                    if self.__resetState is not None:
+                    if self.__resetState is not None and resetClock:
                         proj = self.__initialClockStates[self.__resetState]
                     else:
                         proj = (1. / prob) * proj
@@ -613,11 +655,11 @@ class Simulation:
         if loc is None:
             loc = dim-1
         loc = loc % dim
-        tick = np.zeros((dim, dim), dtype = np.complex_)
-        noTick = np.eye(dim, dtype = np.complex_)
+        tick = np.zeros(dim, dtype = np.complex_)
+        noTick = np.ones(dim, dtype = np.complex_)
         for i in range(d0):
-            tick[loc-i,loc-i] = np.sqrt(delta)
-            noTick[loc-i,loc-i] = np.sqrt(1. - delta)
+            tick[loc-i] = np.sqrt(delta)
+            noTick[loc-i] = np.sqrt(1. - delta)
         self.addProjectors(tick, noTick, clock = clock)
 
     def addHamiltonian(self, hamiltonian):
@@ -692,12 +734,12 @@ class Simulation:
             dimensionsOk = self.__checkDimensionConsistency(tick)
             if dimensionsOk:
                 self.__ready = False
-                self.__checkForEfficiency(tick)
+                projectorsAlreadyDiagonal = self.__checkForEfficiency(tick)
                 tickProj = None
                 noTickProj = None
                 tickProjDag = None
                 noTickProjDag = None
-                if self.__efficient:
+                if self.__efficient and not projectorsAlreadyDiagonal:
                     tickProj = np.diag(tick)
                     noTickProj = np.diag(noTick)
                     tickProjDag = np.diag(tick).conj()
@@ -922,8 +964,9 @@ class Simulation:
             print 'Can\'t run the simulation yet. Not enough clocks.'
             return
         if self.__hamiltonian is None:
-            print 'Can\'t run the simulation yet. No Hamiltonian specified.'
-            return
+            if not self.__veryEfficient:
+                print 'Can\'t run the simulation yet. No Hamiltonian specified.'
+                return
         if self.__tickProjector is None and self.__projectorMode == 'equal':
             print 'Can\'t run the simulation yet. No projectors sepecified.'
             return
@@ -955,6 +998,12 @@ class Simulation:
                 self.mode = 'strict'
             else:
                 self.mode = 'normal'
+
+        # keep count of the number of ticks produced by each clock
+        # this enables us to only send information to the referee once a
+        # clock has ticked many times. this reduces the probabilistic effects
+        # of quantum mechanics
+        self.__nTicks = [0 for _ in range(self.__nClocks)]
         self.__ready = True #initialization successful
 
     def run(self, maxIterations = 50000):

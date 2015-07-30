@@ -306,7 +306,7 @@ class SimulationsController:
             print ('No simulations added. Nothing to remove.')
             return
         self.__simulations.pop(index % self.__nSimulations)
-        self.__nSimulation -= 1
+        self.__nSimulations -= 1
 
     def performSimulations(self):
         from sys import stdout
