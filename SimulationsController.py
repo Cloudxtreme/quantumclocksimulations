@@ -335,7 +335,19 @@ class SimulationsController:
                 tickArray = [] 
                 tickString = ''
                 while True:
+                    nAlternateTicks = len(tickArray)
+                    tempCurrentAverage = currentAverage * lap / float(lap + 1) + nAlternateTicks / float(lap + 1)
+
+                    self.__printConsoleOutput(sim, index, lap, tickString, nAlternateTicks, tempCurrentAverage, stopSimulation)
                     tickingClocks = sim.run()
+
+                    # check if simulation needs to be stopped
+                    if stopSimulation:
+                        currentAverage = tempCurrentAverage
+                        alternateTicks.append(nAlternateTicks)
+                        sim.initialize()
+                        break
+
                     # if several clocks have ticked at exactly the same time (very unlikely)
                     # the simulation should stop (not alternate)
                     if len(tickingClocks) > 1 or len(tickingClocks) == 0:
@@ -376,16 +388,6 @@ class SimulationsController:
                                 tickString += str(tickingClock)
                             else:
                                 stopSimulation = True
-                    nAlternateTicks = len(tickArray)
-                    tempCurrentAverage = currentAverage * lap / float(lap + 1) + nAlternateTicks / float(lap + 1)
-
-                    self.__printConsoleOutput(sim, index, lap, tickString, nAlternateTicks, tempCurrentAverage, stopSimulation)
-                    # check if simulation needs to be stopped
-                    if stopSimulation:
-                        currentAverage = tempCurrentAverage
-                        alternateTicks.append(nAlternateTicks)
-                        sim.initialize()
-                        break
 
             self.__save(sim, alternateTicks)
 
