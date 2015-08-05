@@ -9,7 +9,7 @@ prob = 0.1
 
 # calculated values
 expectationSingle = 1/prob
-varianceSingle = 1/prob**2 + 1/prob
+varianceSingle = 1/prob**2 - 1/prob
 
 p = - (25*varianceSingle + 4*dimension*expectationSingle)/(4*expectationSingle**2)
 q = dimension**2/(4*expectationSingle**2)
