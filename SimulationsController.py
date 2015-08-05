@@ -328,6 +328,7 @@ class SimulationsController:
 
             alternateTicks = []
             currentAverage = 0.
+            change = True
             for lap in range(sim.nAverage):
                 # bool variable to indicate if a simulation needs to be stopped
                 stopSimulation = False
@@ -339,7 +340,6 @@ class SimulationsController:
                     tempCurrentAverage = currentAverage * lap / float(lap + 1) + nAlternateTicks / float(lap + 1)
 
                     self.__printConsoleOutput(sim, index, lap, tickString, nAlternateTicks, tempCurrentAverage, stopSimulation)
-                    tickingClocks = sim.run()
 
                     # check if simulation needs to be stopped
                     if stopSimulation:
@@ -347,6 +347,8 @@ class SimulationsController:
                         alternateTicks.append(nAlternateTicks)
                         sim.initialize()
                         break
+
+                    tickingClocks = sim.run()
 
                     # if several clocks have ticked at exactly the same time (very unlikely)
                     # the simulation should stop (not alternate)
