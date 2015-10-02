@@ -520,7 +520,7 @@ class Simulation:
     # ________________
 
     def setTau(self, tau):
-        self.__tau = __tau
+        self.__tau = tau
         self.__ready = False
         if self.__hamiltonian is not None:
             self.__unitary = expm(-1.j * self.__tau * self.__hamiltonian)
